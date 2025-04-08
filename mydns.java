@@ -141,6 +141,31 @@ public class mydns {
         return new NameResult(result, end);
     }
 
+    public static NameResult parseAddress(int index, byte[] response) {
+        //NameResult ip = null;
+        byte[] ipBytes = new byte[4];
+
+        int currentIndex = index;
+        int labelLength = 0;
+        for(int i = 0; i < ipBytes.length; i++, currentIndex++) { //doesn't parse IPv6
+            labelLength = response[currentIndex] & 0xFF;
+            //System.out.println("labellength " + labelLength);
+            ipBytes[i] = (byte) labelLength;
+        }
+
+        try {
+            InetAddress ipInet = InetAddress.getByAddress(ipBytes);
+            String hostIp = ipInet.getHostAddress();
+            System.out.println("Found host ip: " + hostIp);
+            return new NameResult(hostIp, currentIndex);
+        } catch (UnknownHostException exp) {
+            System.out.println("Unknown IP for bytes: ");
+            for(byte b: ipBytes)
+                System.out.println(b);
+        }
+        return new NameResult("Not found", currentIndex);
+    }
+
     // parse DNS response
     public static void parseResponse(byte[] response) {
         System.out.println("----- parse response -----");
@@ -261,6 +286,8 @@ public class mydns {
         }
 
         System.out.println("Answer section [RFC 4.1.2. AR section format]");
+        //alterations: ignore ipv6 address (type AAAA)
+        //figure out how to parse 4 byte ipv4 address
         for(int count = 0; count < arCount; count++) {
             for(int i = 0; i < 6; i++) {
                 if(i == 0) {
@@ -269,12 +296,9 @@ public class mydns {
                     index = strRes.nextIndex;
                 } else if(i == 5) {
                     //NumberResult ipAddress = parseUnsignedInt(index, 4, response);
-                    NameResult ipString = parseName(index, response);
+                    NameResult ipString = parseAddress(index, response);
                     System.out.println("IP Address" + ipString.name);
                     index = ipString.nextIndex;
-                    // Long num = (Long) ipAddress.number;
-                    // System.out.println("IP Address: " + num);
-
                 } else {
                     if(i == 3) {
                         NumberResult numberResult = parseUnsignedInt(index, 4, response);
