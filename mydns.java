@@ -18,13 +18,13 @@ public class mydns {
         // +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         // |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
         // +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        // |  # of name, typefields for query QDCOUNT                    |
+        // |  # of name, typefields for query QDCOUNT      |
         // +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        // |    ANCOUNT # of resource records                   |
+        // |    ANCOUNT # of resource records              |
         // +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        // |   NSCOUNT # of records for authoritative servers                |
+        // | NSCOUNT # of records for authoritative servers|
         // +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        // |       ARCOUNT additional info                   |
+        // |       ARCOUNT additional info                 |
         // +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         //QR = Query or response
         //AA = authoritative answer - 0 indicates authoritative server
@@ -52,7 +52,7 @@ public class mydns {
 
         // Split domain name into labels
         //split by .
-        String[] labels = domainName.split("\\.");
+        String[] labels = domainName.split("\\."); //cs.fiu.edu
         for (String label : labels) {
             query.put((byte)label.length()); // length byte
             query.put(label.getBytes(StandardCharsets.UTF_8));  // label bytes
@@ -93,6 +93,7 @@ public class mydns {
         switch (byteLength) {
             case 1: num = buffer.get() & 0xFF; break; //this is a byte - AND buffer with 0b11111111
             case 2: num = buffer.getShort() & 0xFFFF; break; //this is a short - AND buffer with 0b1111111111111111
+            case 4: num = buffer.getInt() & 0xFFFFFFFF; break;
             default: throw new IllegalArgumentException("Unsupported byte length");
         }
         return new NumberResult(num, index + byteLength);
@@ -178,10 +179,12 @@ public class mydns {
 
         result = parseUnsignedInt(index, 2, response);
         System.out.println("NSCOUNT: " + result.number);
+        long nsCount = result.number;
         index = result.nextIndex;
 
         result = parseUnsignedInt(index, 2, response);
         System.out.println("ARCOUNT: " + result.number);
+        long arCount = result.number;
         index = result.nextIndex;
 
         System.out.println("Question section [RFC 4.1.2. Question section format]");
@@ -207,6 +210,59 @@ public class mydns {
 
         result = parseUnsignedInt(index, 2, response);
         System.out.println("QCLASS: " + result.number);
+        index = result.nextIndex;
+
+
+        System.out.println("Resource Record section [RFC 4.1.2. RR section format]");
+        //RESOURCE RECORD SECTION
+        //FORMAT
+
+        /* 
+         * Name
+         * Type
+         * Class
+         * TTL
+         * RDLength
+         * RData
+         * 
+         */
+
+        // NameResult rrResult = parseName(index, response);
+        // System.out.println("RR NAME: " + rrResult.name);
+        // index = rrResult.nextIndex;
+
+        // //NameResult rrResultName = parseName(index, response);
+        // result = parseUnsignedInt(index, 2, response);
+        // System.out.println("RR Type: " + result.number);
+        // index = result.nextIndex;
+
+        //type = 2 bytes
+        //class = 2 bytes
+        //TTL = 4 bytes
+
+        for(int count = 0; count < nsCount; count++) {
+            for(int i = 0; i < 6; i++) {
+                if(i == 0 || i == nsCount - 1) {
+                    NameResult strRes = parseName(index, response);
+                    System.out.println("String field: " + strRes.name);
+                    index = strRes.nextIndex;
+                } else {
+                    if(i == 3) {
+                        NumberResult numberResult = parseUnsignedInt(index, 4, response);
+                        System.out.println("Num field: " + numberResult.number);
+                        index = numberResult.nextIndex;
+                    } else {
+                        NumberResult numberResult = parseUnsignedInt(index, 2, response);
+                        System.out.println("Num field: " + numberResult.number);
+                        index = numberResult.nextIndex;
+                    }
+                }
+            }
+        }
+        
+
+
+        //result = parseUnsignedInt(index, index, response);
     }
 
     public static void main(String[] args) throws Exception {
@@ -244,7 +300,6 @@ public class mydns {
          * To do: 
          * Take those counts and parse all relevant names, name servers
          * Take all information and parse all relevant name, IP
-         * 
          */
     }
 }
