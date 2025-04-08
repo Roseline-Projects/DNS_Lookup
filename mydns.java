@@ -242,7 +242,7 @@ public class mydns {
 
         for(int count = 0; count < nsCount; count++) {
             for(int i = 0; i < 6; i++) {
-                if(i == 0 || i == nsCount - 1) {
+                if(i == 0 || i == 5) {
                     NameResult strRes = parseName(index, response);
                     System.out.println("String field: " + strRes.name);
                     index = strRes.nextIndex;
@@ -259,9 +259,36 @@ public class mydns {
                 }
             }
         }
+
+        System.out.println("Answer section [RFC 4.1.2. AR section format]");
+        for(int count = 0; count < arCount; count++) {
+            for(int i = 0; i < 6; i++) {
+                if(i == 0) {
+                    NameResult strRes = parseName(index, response);
+                    System.out.println("String field: " + strRes.name);
+                    index = strRes.nextIndex;
+                } else if(i == 5) {
+                    //NumberResult ipAddress = parseUnsignedInt(index, 4, response);
+                    NameResult ipString = parseName(index, response);
+                    System.out.println("IP Address" + ipString.name);
+                    index = ipString.nextIndex;
+                    // Long num = (Long) ipAddress.number;
+                    // System.out.println("IP Address: " + num);
+
+                } else {
+                    if(i == 3) {
+                        NumberResult numberResult = parseUnsignedInt(index, 4, response);
+                        System.out.println("Num field: " + numberResult.number);
+                        index = numberResult.nextIndex;
+                    } else {
+                        NumberResult numberResult = parseUnsignedInt(index, 2, response);
+                        System.out.println("Num field: " + numberResult.number);
+                        index = numberResult.nextIndex;
+                    }
+                }
+            }
+        }
         
-
-
         //result = parseUnsignedInt(index, index, response);
     }
 
