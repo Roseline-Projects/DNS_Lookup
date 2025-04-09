@@ -167,7 +167,7 @@ public class mydns {
     }
 
     // parse DNS response
-    public static void parseResponse(byte[] response) {
+    public static NameResult[] parseResponse(byte[] response) {
         System.out.println("----- parse response -----");
         int index = 0;
 
@@ -288,15 +288,17 @@ public class mydns {
         System.out.println("Answer section [RFC 4.1.2. AR section format]");
         //alterations: ignore ipv6 address (type AAAA)
         //figure out how to parse 4 byte ipv4 address
+        NameResult ipString = null;
+        NameResult strRes = null;
         for(int count = 0; count < arCount; count++) {
             for(int i = 0; i < 6; i++) {
                 if(i == 0) {
-                    NameResult strRes = parseName(index, response);
+                    strRes = parseName(index, response);
                     System.out.println("String field: " + strRes.name);
                     index = strRes.nextIndex;
                 } else if(i == 5) {
                     //NumberResult ipAddress = parseUnsignedInt(index, 4, response);
-                    NameResult ipString = parseAddress(index, response);
+                    ipString = parseAddress(index, response);
                     System.out.println("IP Address" + ipString.name);
                     index = ipString.nextIndex;
                 } else {
@@ -312,7 +314,7 @@ public class mydns {
                 }
             }
         }
-        
+        return new NameResult[] {ipString, strRes}; //return the ip address
         //result = parseUnsignedInt(index, index, response);
     }
 
@@ -326,13 +328,15 @@ public class mydns {
         String rootDnsIp = args[1]; //IP of WIDE root DNS server
 
         // Create UDP socket
+        NameResult [] info = new NameResult[] {rootDnsIp, domainName};
+        
+        for(int i = 1;i < 5; i++){
         DatagramSocket socket = new DatagramSocket();
-
         // Send DNS query
-        int id = 1;
+        int id = i;
         byte[] query = createQuery(id, domainName);
         DatagramPacket packet = new DatagramPacket(query, query.length, 
-                                InetAddress.getByName(rootDnsIp), 53);
+                                InetAddress.getByName(info[0]), 53);
         socket.send(packet); //send it out for a response
 
         // Receive response
@@ -343,10 +347,14 @@ public class mydns {
         // Parse response
         byte[] actualResponse = new byte[responsePacket.getLength()];
         System.arraycopy(response, 0, actualResponse, 0, responsePacket.getLength());
-        parseResponse(actualResponse);
+         info = parseResponse(actualResponse);
 
-        socket.close();
 
+        System.out.println("this response finished" );
+        socket.close(); //close the socket
+        }
+        
+        System.out.println("Final IP: " + rootDnsIp);
         /*
          * To do: 
          * Take those counts and parse all relevant names, name servers
