@@ -7,6 +7,7 @@ public class mydns {
     // create DNS query message
     public static byte[] createQuery(int id, String domainName) {
         // Header section
+        System.out.println("Creating query --====-=--=-==-=--=-=-=-=-=-=-=-==-=-=-=-=-");
         ByteBuffer query = ByteBuffer.allocate(1024);
         query.order(ByteOrder.BIG_ENDIAN);
 
@@ -53,6 +54,8 @@ public class mydns {
         // Split domain name into labels
         //split by .
         String[] labels = domainName.split("\\."); //cs.fiu.edu
+        System.out.println("labels: ");
+        for(String s: labels) {System.out.println(s);};
         for (String label : labels) {
             query.put((byte)label.length()); // length byte
             query.put(label.getBytes(StandardCharsets.UTF_8));  // label bytes
@@ -298,9 +301,12 @@ public class mydns {
                     index = strRes.nextIndex;
                 } else if(i == 5) {
                     //NumberResult ipAddress = parseUnsignedInt(index, 4, response);
-                    ipString = parseAddress(index, response);
-                    System.out.println("IP Address" + ipString.name);
-                    index = ipString.nextIndex;
+                    NameResult ipFound = parseAddress(index, response);
+                    System.out.println("IP Address" + ipFound.name);
+                    if(count == 0){ //first IP
+                        ipString = ipFound;
+                    }
+                    index = ipFound.nextIndex;
                 } else {
                     if(i == 3) {
                         NumberResult numberResult = parseUnsignedInt(index, 4, response);
@@ -328,29 +334,46 @@ public class mydns {
         String rootDnsIp = args[1]; //IP of WIDE root DNS server
 
         // Create UDP socket
-        NameResult [] info = new NameResult[] {rootDnsIp, domainName};
+        NameResult [] info = new NameResult[2];
+        //{rootDnsIp, domainName};
         
         for(int i = 1;i < 5; i++){
+            System.out.println("Starting a new Request! --====-=--=-==-=--=-=-=-=-=-=-=-==-=-=-=-=-");
+
+
         DatagramSocket socket = new DatagramSocket();
         // Send DNS query
         int id = i;
-        byte[] query = createQuery(id, domainName);
-        DatagramPacket packet = new DatagramPacket(query, query.length, 
-                                InetAddress.getByName(info[0]), 53);
-        socket.send(packet); //send it out for a response
+
+        if(i == 1) {
+            byte[] query = createQuery(id, domainName);
+            DatagramPacket packet = new DatagramPacket(query, query.length, 
+                                        InetAddress.getByName(rootDnsIp), 53);
+            socket.send(packet); //send it out for a response
+        }else{
+            byte[] query = createQuery(id, info[1].name);
+            DatagramPacket packet = new DatagramPacket(query, query.length, 
+                                    InetAddress.getByName(info[0].name), 53);
+            socket.send(packet); //send it out for a response
+        }
+        //socket.send(packet); //send it out for a response
+        System.out.println("Sent to: " + rootDnsIp);
+        System.out.println("Sent packet -----------------------------------------------------");
 
         // Receive response
         byte[] response = new byte[2048];
         DatagramPacket responsePacket = new DatagramPacket(response, response.length);
         socket.receive(responsePacket); //get the socket's response and puts it into the packet
+        System.out.println("Got response -----------------------------------------------------");
 
         // Parse response
         byte[] actualResponse = new byte[responsePacket.getLength()];
         System.arraycopy(response, 0, actualResponse, 0, responsePacket.getLength());
-         info = parseResponse(actualResponse);
+        info = parseResponse(actualResponse);
+        rootDnsIp = info[0].name;
+        System.out.println("Parsed response! -----------------------------------------------------");
 
-
-        System.out.println("this response finished" );
+        System.out.println("this response finished -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
         socket.close(); //close the socket
         }
         
